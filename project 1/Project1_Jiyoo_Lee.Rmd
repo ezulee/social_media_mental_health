@@ -1,0 +1,432 @@
+---
+title: "DAT 301 Project 1"
+author: "Jiyoo Lee"
+date: "2026-03-28"
+output:
+  ioslides_presentation: default
+  beamer_presentation: default
+---
+
+<style type="text/css">
+body p, div, h1, h2, h3, h4, h5, li {
+  color: black;
+  font-family: Modern Computer Roman;
+}
+slides > slide.title-slide hgroup h1 {
+  color: #8C1D40; <!-- the maroon color -->
+}
+h2 {
+color: #8C1D40 <!-- the maroon color -->
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+```{r, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(knitr)
+library(kableExtra)
+library(DT)
+df <- read.csv("social_media_mental_health.csv")
+```
+
+## 1. Background and Problem Definition
+
+In the digital era, social media came to affect a lot of aspects of our lives. It works as a source for making new relationships and maintaining relationships, getting information, and checking trends in various areas. Social media keeps our lives constantly connected with the world. However, there are also increasing concerns and research about social media and mental health. Now, social media is known to have a negative effect on mental health. But as a necessary part of our social life, it is important to know what specific factors - screen time, usage pattern, gender, age, etc. - are related to negative influence of social media. This project focuses on the relationship between daily screen time and mental health outcomes, specifically anxiety (GAD-7) and depression (PHQ-9) scores. Furthermore, the analysis investigates whether factors such as gender and activity type contribute to variations in these relationships.
+
+## 2 - 1. Dataset Preview
+
+The "Social Media and Mental Health" from Kaggle was used for the analysis. Below are the first five rows of the dataset.
+
+```{r echo=FALSE}
+datatable(head(df, 5), 
+          class = 'cell-border stripe compact',
+          options = list(
+            scrollX = TRUE,
+            pageLength = 5,
+            dom = 't'
+          ),
+          width = '100%',
+          style = 'bootstrap'
+)
+```
+
+## 2 - 2. Data Structure
+
+To understand the structure of the dataset, I inspected the data types of each variable. Identifying whether variables are numeric or categorical is essential for determining appropriate visualization and analysis methods, as well as for identifying potential inconsistencies that may require cleaning.
+
+## 2 - 2 (continued). Data Structure
+
+```{r echo=FALSE, comment=""}
+data.frame(Variable = names(df),
+           Type = sapply(df, class))
+```
+## 2 - 3. Variables
+
+<div style="font-size: 18px;">
+There are 15 variables in the dataset.  
+
+1. User ID: Unique identifier for each participant  
+2. Age: Age of the user  
+3. Gender: Self-reported gender identity  
+4. User-Archetype: User behavior classification (e.g., Hyper-Connected)  
+5. Primary Platform: Primary social media platform used  
+6. Daily Screen Time Hours: Average daily screen time (Hours)  
+7. Dominant Content Type: Main type of content consumed  
+8. Activity Type: Interaction style (Active vs. Passive)  
+9. Late Night Usage: Indicator for late-night usage (0: No, 1: Yes)  
+10. Social Comparison Trigger: Experience of social comparison triggers (0: No, 1: Yes)  
+11. Sleep Duration Hours: Average nightly sleep duration (Hours)  
+12. GAD 7 Score: Generalized Anxiety Disorder (GAD-7) score  
+13. GAD 7 Severity: Anxiety severity classification  
+14. PHQ 9 Score: Depression (PHQ-9) score  
+15. PHQ 9 Severity: Depression severity classification  
+</div>
+
+## 2 - 4. Data  Wrangling, Munging, and Cleaning
+
+<div style="font-size: 20px;">
+Before conducting the analysis, the dataset was cleaned and reduced to the variables most relevant to the research question. In addition to age, gender, daily screen time, and mental health measures (GAD-7 and PHQ-9), activity type was included to capture differences in user behavior patterns. Missing values were removed, and the cleaned dataset was checked to ensure appropriate data types and consistency for analysis. Gender and activity type were converted into categorical variables to enable group-based comparisons in the analysis. The first five rows of the cleaned data set is below.
+
+```{r include=FALSE}
+# select variables
+df_clean <- df %>%
+  select(
+    age = Age,
+    gender = Gender,
+    scr_time = Daily_Screen_Time_Hours,
+    act_type = Activity_Type,
+    gad_score = GAD_7_Score,
+    phq_score = PHQ_9_Score
+  )
+
+# check & remove missing values
+na = sum(is.na(df_clean))
+na
+df_clean <- na.omit(df_clean)
+na_hand = sum(is.na(df_clean))
+na_hand
+```
+```{r echo=FALSE, comment=""}
+head(df_clean, 5)
+```
+There was no missing values among the selected variables. There are a total of 8000 rows in the cleaned dataset.
+</div>
+
+## 3. Exploratory Data Analysis
+
+Before exploring the relationships between daily screen time and mental health outcomes, exploratory data analysis was conducted using visualizations. This section examines the distribution of key variables - age, gender, activity type, GAD-7 Score, and PHQ-9 Score.
+
+## 3 - 1. Age Distribution
+
+```{r echo=FALSE}
+# calculate average and range of age
+avg_age <- mean(df_clean$age)
+min_age <- min(df_clean$age)
+max_age <- max(df_clean$age)
+
+# age distribution using ggplot
+h_age <- ggplot(df_clean, aes(x = age)) +
+  geom_histogram(bins = 10, fill = "lightblue") +
+  labs(title = "Age Distribution",
+       x = "Age", y = "Counts",
+       subtitle = paste("Average Age: ", round(avg_age, 2),
+                        " Min: ", round(min_age, 2),
+                        " Max: ", round(max_age, 2))
+       ) +
+  theme_minimal()
+
+# print
+h_age
+```
+
+<div style="font-size:20px;">
+The minimum age is 18 and the maximum age is 22, with the range of 4. The participants' average age is 19.06.
+</div>
+
+## 3 - 2. Gender Distribution
+
+```{r echo=FALSE}
+# gender distribution using ggplot
+h_gender <- ggplot(df_clean, aes(x = gender, fill = gender))+
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("Female" = "lightpink", "Male" = "lightblue")) +
+  geom_text(stat = "count", aes(label = after_stat(count))) +
+  labs(title = "Gender Distribution",
+       x = "Gender", y = "Counts") +
+  theme_minimal()
+
+# print
+h_gender
+```
+
+<div style="font-size:20px;">
+There are 4,028 female and 3,972 male participants in total.
+</div>
+
+## 3 - 3. Screen Time Distribution
+
+```{r echo=FALSE}
+# average screen time
+avg_scr <- mean(df_clean$scr_time)
+min_scr <- min(df_clean$scr_time)
+max_scr <- max(df_clean$scr_time)
+
+# screen time distribution using ggplot
+h_scr <- ggplot(df_clean, aes(x = scr_time)) +
+  geom_histogram(bins = 30, fill = "lightblue") + 
+  labs(title = "Distribution of Screen Time",
+       subtitle = paste("Average Screen Time:", round(avg_scr, 2),
+                        " Min: ", round(min_scr, 2),
+                        " Max: ", round(max_scr, 2)),
+       x = "Screen Time", y = "Total Hours") +
+  theme_minimal()
+
+# print
+h_scr
+```
+<div style="font-size:20px;">
+The average screen time is 4.28 hours, with minimun of 0.5 hours and maximum of 11.31 hours.
+</div>
+
+## 3 - 4. Activity Type Distribution
+
+```{r echo=FALSE}
+# activity type distribution using ggplot
+h_act <- ggplot(df_clean, aes(x = act_type, fill = act_type))+
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("Active" = "lightgreen", "Passive" = "darkgray")) +
+  geom_text(stat = "count", aes(label = after_stat(count))) +
+  labs(title = "Activity Type Distribution (Active vs. Passive)",
+       x = "Activity Type", y = "Counts") +
+  theme_minimal()
+
+# print
+h_act
+```
+<div style="font-size:20px;">
+There are two activity types: active type means posting, and passive type means scrolling. There are 6,091 active users and 1,909 passive users in total.
+</div>
+
+## 3 - 5. GAD-7 Score Distribution
+
+```{r echo=FALSE}
+# average GAD score
+avg_gad <- mean(df_clean$gad_score)
+min_gad <- min(df_clean$gad_score)
+max_gad <- max(df_clean$gad_score)
+
+# GAD score distribution using ggplot
+h_gad <- ggplot(df_clean, aes(x = gad_score)) +
+  geom_histogram(bins = 20, fill = "orange") + 
+  labs(title = "Distribution of GAD-7 Score",
+       subtitle = paste("Average GAD-7 Score:", round(avg_gad, 2),
+                        " Min: ", round(min_gad, 2),
+                        " Max: ", round(max_gad, 2)),
+       x = "GAD-7 Score", y = "Total") +
+  theme_minimal()
+
+# print
+h_gad
+```
+<div style="font-size:20px;">
+Generalized Anxiety Disorder (GAD-7) measures severity of anxiety with a score range of 0-21: 0-4 indicates minimal, 5-9 indicates mild, 10-14 indicates moderate, and 15-21 indicates severe anxiety. The average GAD-7 score is 7.35, with the minimum of 0 and the maximum of 21.
+</div>
+
+## 3 - 6. PHQ-9 Score Distribution
+
+```{r echo=FALSE}
+# average PHQ score
+avg_phq <- mean(df_clean$phq_score)
+min_phq <- min(df_clean$phq_score)
+max_phq <- max(df_clean$phq_score)
+
+# PHQ score distribution using ggplot
+h_phq <- ggplot(df_clean, aes(x = phq_score)) +
+  geom_histogram(bins = 20, fill = "#7FB3D5") + 
+  labs(title = "Distribution of PHQ-9 Score",
+       subtitle = paste("Average PHQ-9 Score:", round(avg_phq, 2),
+                        " Min: ", round(min_phq, 2),
+                        " Max: ", round(max_phq, 2)),
+       x = "PHQ-9 Score", y = "Total") +
+  theme_minimal()
+
+# print
+h_phq
+```
+<div style="font-size:20px;">
+Patient Health Questionnaire (PHQ-9) measures the severity of depression, with a score range of 0-27: 0-4 indicates non-minimal, 5-9 indicates mild, 10-14 indicates moderate, 15-19 indicates moderately severe, and 20-27 indicates severe depression. The average PHQ-9 score is 5.38, with the minimum of 0 and the maximum of 23.
+</div>
+
+## 4. Data Visualization and Analysis
+
+To explore the relationships between daily screen time and mental health outcomes, screen time and mental health scores - GAD-7 and PHQ-9 - are examined for their relationship. This section will examine the relationships between screen time and mental health scores, and differences by gender and activity types.
+
+## 4 - 1. Relationship Between Screen Time and GAD-7 Score
+```{r echo=FALSE, message=FALSE}
+# correlation between screen time and GAD score
+cor_scr_gad <- cor(df_clean$scr_time, df_clean$gad_score)
+
+# plot and draw a regression line using ggplot
+r_scr_gad <- ggplot(df_clean, aes(x = scr_time, y = gad_score, color = gad_score)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "darkred") +
+  scale_color_gradient(low = "#FFE0B2", high = "#E65100") +
+  labs(x = "Screen Time in Hours", y = "GAD-7 Score",
+       title = "Screen Time and GAD-7 Score",
+       subtitle = paste("Correlation Coefficient (r) = ", round(cor_scr_gad,2)),
+       color = "Anxiety Level") +
+  theme_minimal()
+
+r_scr_gad
+```
+<div style="font-size:20px;">
+Screen time and GAD-7 score shows a strong positive correlation (r = .63).
+</div>
+
+## 4 - 2. Moderating Role of Gender
+```{r echo=FALSE, message=FALSE}
+# filter df by gender
+df_fe <- df_clean %>% filter(gender == "Female")
+df_m <- df_clean %>% filter(gender == "Male")
+
+# calculate correlation by gender
+cor_f_gad <- cor(df_fe$scr_time, df_fe$gad_score)
+cor_m_gad <- cor(df_m$scr_time, df_m$gad_score)
+
+# plot and draw a regression line using ggplot and plotly
+gad_gen <- ggplot(df_clean, aes(x = scr_time, y = gad_score, color = gender)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
+  scale_color_manual(values = c("Female" = "#F06292", "Male" = "#4FC3F7")) +
+  labs(title = paste("Screen Time and GAD-7 Score <br> Difference by Gender | ",
+                        "Female r = ", round(cor_f_gad, 2),
+                        " Male r = ", round(cor_m_gad, 2)),
+       x = "Screen Time", y = "GAD-7 Score") +
+  theme_minimal()
+
+ggplotly(gad_gen)
+```
+
+<div style="font-size:20px;">
+In the relationship between screen time and GAD-7 score, the difference by gender did not appear as the correlation coefficient by gender were the same (female r = .63, male r = .63).
+</div>
+
+## 4 - 3. Moderating Role of Activity Type
+```{r echo=FALSE}
+# filter df by activity type
+df_a <- df_clean %>% filter(act_type == "Active")
+df_p <- df_clean %>% filter(act_type == "Passive")
+
+# calculate correlation by activity type
+cor_a_gad <- cor(df_a$scr_time, df_a$gad_score)
+cor_p_gad <- cor(df_p$scr_time, df_p$gad_score)
+
+# plot and draw a regression line using ggplot and plotly
+gad_act <- ggplot(df_clean, aes(x = scr_time, y = gad_score, color = act_type)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
+  scale_color_manual(values = c("Active" = "lightgreen", "Male" = "darkgray")) +
+  labs(title = paste("Screen Time and GAD-7 Score <br> Difference by Activity Type | ",
+                        "Active r = ", round(cor_a_gad, 2),
+                        " Passive r = ", round(cor_p_gad, 2)),
+       x = "Screen Time", y = "GAD-7 Score") +
+  theme_minimal()
+
+ggplotly(gad_act)
+```
+<div style="font-size:20px;">
+Activity type works as a moderating factor in the relationship between screen time and GAD-7 score. While the correlation coefficient of active users was r = .66, those of passive users was r = .40. This result indicates that active usage (posting) of social media strengthens the relationship between screen time and GAD-7 score, whereas that the passive usage (scrolling) weakens the relationship.
+</div>
+
+## 4 - 4. Relationship Between Screen Time and PHQ-9 Score
+```{r echo=FALSE, message=FALSE}
+cor_scr_phq <- cor(df_clean$scr_time, df_clean$phq_score)
+
+r_scr_phq <- ggplot(df_clean, aes(x = scr_time, y = phq_score, color = phq_score)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "navy") +
+  labs(x = "Screen Time in Hours", y = "PHQ-9 Score",
+       title = "Screen Time and PHQ-9 Score",
+       subtitle = paste("Correlation Coefficient (r) = ", round(cor_scr_phq,2)),
+       color = "Depression Level") +
+  theme_minimal()
+
+r_scr_phq
+```
+<div style="font-size:20px;">
+Screen time and PHQ-9 score shows a strong positive correlation (r = .59).
+</div>
+
+## 4 - 5. Moderating Role of Gender
+```{r echo=FALSE, message=FALSE}
+# calculate correlation by gender
+cor_f_phq <- cor(df_fe$scr_time, df_fe$phq_score)
+cor_m_phq <- cor(df_m$scr_time, df_m$phq_score)
+
+# plot and draw a regression line using ggplot and plotly
+phq_gen <- ggplot(df_clean, aes(x = scr_time, y = phq_score, color = gender)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
+  scale_color_manual(values = c("Female" = "#F06292", "Male" = "#4FC3F7")) +
+  labs(title = paste("Screen Time and PHQ-9 Score <br> Difference by Gender | ",
+                        "Female r = ", round(cor_f_phq, 2),
+                        " Male r = ", round(cor_m_phq, 2)),
+       x = "Screen Time", y = "PHQ-9 Score") +
+  theme_minimal()
+
+ggplotly(phq_gen)
+```
+<div style="font-size:20px;">
+In the relationship between screen time and the PHQ-9 score, there is a difference in correlation coefficient r by gender (female r = .60, male r = .59). However, it is hard to tell it is significant.
+</div>
+
+## 4 - 6. Moderating Role of Activity Type
+```{r echo=FALSE, message=FALSE}
+# plot and draw a regression line using ggplot and plotly
+phq_act <- ggplot(df_clean, aes(x = scr_time, y = phq_score, color = act_type)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
+  scale_color_manual(values = c("Active" = "lightgreen", "Male" = "darkgray")) +
+  labs(title = paste("Screen Time and PHQ-9 Score <br> Difference by Activity Type | ",
+                        "Active r = ", round(cor_a_gad, 2),
+                        " Passive r = ", round(cor_p_gad, 2)),
+       x = "Screen Time", y = "PHQ-9 Score") +
+  theme_minimal()
+
+ggplotly(phq_act)
+```
+<div style="font-size:20px;">
+In the relationship between screen time and the PHQ-9 score, there is a difference in correlation coefficient r by activity type (active r = .66, passive r = .40). While the active usage strengthens the positive correlation between screen time and the PHQ-9 score, the passive usage weakens it.
+</div>
+
+## 5. Conclusion and Limitation
+
+<div style="font-size:20px;">
+**Limitation**
+
+- Correlation, not causal relationship
+- Age limitation
+- Simplified activity type
+
+**Screen time is positively associated with mental health outcomes**
+
+- GAD-7: r = .63 (strong)
+- PHQ-9: r = .59 (moderate to strong)
+
+**Gender does not significantly influence the relationship**
+
+- Similar correlations across male and female groups for both GAD-7 and PHQ-9
+
+**Activity type plays a moderating role**
+
+- Active users: stronger correlation (r = .66)
+- Passive users: weaker correlation (r = .40)
+
+**Behavioral patterns matter more than demographic factors**
+</div>
